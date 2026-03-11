@@ -13,13 +13,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateGroupModal } from "@/components/chat/CreateGroupModal";
 import { ConversationItem } from "@/components/chat/ConversationItem";
 import { UserItem } from "@/components/chat/UserItem";
+import toast from "react-hot-toast";
 
 export function LogoutButton() {
   const { signOut } = useClerk();
   const router = useRouter();
 
   const handleLogout = async () => {
+    sessionStorage.removeItem("welcomed");
     await signOut();
+    toast.success("Successfully logged out!");
     router.push("/");
   };
 
@@ -82,6 +85,15 @@ export default function ChatPage() {
       setOnlineStatus({ clerkId: user.id, isOnline: false });
     };
   }, [user, setOnlineStatus]);
+
+  useEffect(() => {
+    if (user && !sessionStorage.getItem("welcomed")) {
+      sessionStorage.setItem("welcomed", "true");
+      toast.success(
+        `Welcome back, ${user.firstName || user.username || "User"}!`,
+      );
+    }
+  }, [user]);
 
   const [search, setSearch] = useState("");
   const [selectedConversation, setSelectedConversation] =

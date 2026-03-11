@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import ConvexClientProvider from "@/providers/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import SyncUser from "@/components/SyncUser";
+import { Toaster } from "react-hot-toast";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -37,6 +38,7 @@ export default function RootLayout({
           >
             <SyncUser />
             {children}
+            <Toaster position="bottom-right" />
           </body>
         </html>
       </ConvexClientProvider>
