@@ -15,6 +15,8 @@ export default defineSchema({
     lastMessage: v.optional(v.string()),
     lastMessageTime: v.optional(v.number()),
     typingUsers: v.optional(v.array(v.id("users"))),
+    isGroup: v.optional(v.boolean()),
+    groupName: v.optional(v.string()),
   }).index("by_user", ["participants"]),
 
   messages: defineTable({

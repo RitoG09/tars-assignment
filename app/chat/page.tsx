@@ -8,9 +8,17 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/ChatWindow";
-import { Search, LogOut, MessageSquare } from "lucide-react";
+import { Search, LogOut, MessageSquare, Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function LogoutButton() {
   const { signOut } = useClerk();
@@ -22,8 +30,14 @@ export function LogoutButton() {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={handleLogout} title="Sign Out">
-      <LogOut className="h-5 w-5 text-gray-500" />
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={handleLogout}
+      title="Sign Out"
+      className="bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400"
+    >
+      <LogOut className="h-5 w-5" />
     </Button>
   );
 }
@@ -49,6 +63,8 @@ export default function ChatPage() {
   const startConversation = useMutation(
     api.conversations.getOrCreateConversation,
   );
+
+  const createGroup = useMutation(api.conversations.createGroup);
 
   const setOnlineStatus = useMutation(api.users.updateOnlineStatus);
 
@@ -76,11 +92,43 @@ export default function ChatPage() {
   const [search, setSearch] = useState("");
   const [selectedConversation, setSelectedConversation] =
     useState<Id<"conversations"> | null>(null);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedGroupUsers, setSelectedGroupUsers] = useState<Id<"users">[]>(
+    [],
+  );
 
-  const filtered =
-    users?.filter((u) =>
-      u.username.toLowerCase().includes(search.toLowerCase()),
+  const filteredUsers =
+    users?.filter(
+      (u) =>
+        u._id !== currentUser?._id &&
+        u.username.toLowerCase().includes(search.toLowerCase()),
     ) ?? [];
+
+  const filteredConversations =
+    conversations?.filter((c) => {
+      if (!search) return true;
+      if (c.isGroup && c.groupName)
+        return c.groupName.toLowerCase().includes(search.toLowerCase());
+      if (c.otherUser)
+        return c.otherUser.username
+          .toLowerCase()
+          .includes(search.toLowerCase());
+      return false;
+    }) ?? [];
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedGroupUsers.length === 0 || !currentUser)
+      return;
+    const id = await createGroup({
+      name: groupName,
+      participants: [...selectedGroupUsers, currentUser._id],
+    });
+    setGroupName("");
+    setSelectedGroupUsers([]);
+    setIsGroupModalOpen(false);
+    setSelectedConversation(id);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-zinc-950 font-sans">
@@ -98,7 +146,67 @@ export default function ChatPage() {
               Chats
             </span>
           </div>
-          <LogoutButton />
+          <div className="flex gap-1">
+            <Dialog open={isGroupModalOpen} onOpenChange={setIsGroupModalOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1.5 text-sm bg-orange-50 hover:bg-orange-100 text-orange-600 border-none px-3 h-9"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="font-medium">Create Group</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md bg-white dark:bg-zinc-950">
+                <DialogHeader>
+                  <DialogTitle>Create Group Chat</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 py-4">
+                  <input
+                    className="flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-gray-100 border-none rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all font-medium"
+                    placeholder="Group Name"
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                  />
+                  <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar">
+                    {users
+                      ?.filter((u) => u._id !== currentUser?._id)
+                      .map((u) => (
+                        <div
+                          key={u._id}
+                          className="flex items-center space-x-2 p-2 hover:bg-gray-50 dark:hover:bg-zinc-900 rounded-lg cursor-pointer"
+                          onClick={() => {
+                            setSelectedGroupUsers((prev) =>
+                              prev.includes(u._id)
+                                ? prev.filter((id) => id !== u._id)
+                                : [...prev, u._id],
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedGroupUsers.includes(u._id)}
+                          />
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                            {u.username}
+                          </label>
+                        </div>
+                      ))}
+                  </div>
+                  <Button
+                    onClick={handleCreateGroup}
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                    disabled={
+                      !groupName.trim() || selectedGroupUsers.length === 0
+                    }
+                  >
+                    Create Group
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <LogoutButton />
+          </div>
         </div>
 
         {/* Search */}
@@ -116,7 +224,7 @@ export default function ChatPage() {
 
         {/* User List */}
         <div className="flex-1 overflow-y-auto no-scrollbar">
-          {filtered.length === 0 && search && (
+          {filteredUsers.length === 0 && search && (
             <div className="p-8 text-center text-sm text-gray-500 flex flex-col items-center">
               <MessageSquare className="h-8 w-8 text-gray-300 mb-3" />
               <p>No users found for "{search}"</p>
@@ -133,81 +241,167 @@ export default function ChatPage() {
           )}
 
           <div className="py-2">
-            {users === undefined || conversations === undefined
-              ? // Loading State Skeletons
-                Array.from({
-                  length: conversations ? conversations.length : 5,
-                }).map((_, i) => (
-                  <div key={i} className="px-4 py-3 flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-3/4" />
-                    </div>
+            {users === undefined || conversations === undefined ? (
+              // Loading State Skeletons
+              Array.from({
+                length: conversations ? conversations.length : 5,
+              }).map((_, i) => (
+                <div key={i} className="px-4 py-3 flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-3/4" />
                   </div>
-                ))
-              : // Actual User List
-                filtered?.map((u) => {
-                  const conv = conversations?.find(
-                    (c) => c.otherUser?._id === u._id,
-                  );
-                  const isSelected =
-                    selectedConversation === (conv?._id || "temp");
+                </div>
+              ))
+            ) : (
+              // Actual List (Conversations or Search Results)
+              <>
+                {!search &&
+                  filteredConversations.map((conv) => {
+                    const isSelected = selectedConversation === conv._id;
+                    const displayAvatar = conv.isGroup
+                      ? ""
+                      : conv.otherUser?.image || "";
+                    const displayName = conv.isGroup
+                      ? conv.groupName
+                      : conv.otherUser?.username;
+                    const membersSubtext = conv.isGroup
+                      ? `${conv.participantDetails?.length} members`
+                      : conv.otherUser?.isOnline
+                        ? "Online"
+                        : "Offline";
+                    const isOnline =
+                      !conv.isGroup && (conv.otherUser?.isOnline || false);
 
-                  return (
-                    <div
-                      key={u._id}
-                      className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-4 ${
-                        isSelected
-                          ? "bg-orange-50 dark:bg-orange-950/30 border-r-4 border-orange-500"
-                          : "hover:bg-gray-50 dark:hover:bg-zinc-800/50 border-r-4 border-transparent"
-                      }`}
-                      onClick={async () => {
-                        if (currentUser) {
-                          const id = await startConversation({
-                            u1: currentUser._id,
-                            u2: u._id,
-                          });
-                          setSelectedConversation(id);
-                        }
-                      }}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-12 w-12 border border-gray-200 shadow-sm">
-                          <AvatarImage src={u.image || ""} alt={u.username} />
-                          <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
-                            {u.username.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {u.isOnline && (
-                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
-                        )}
-                      </div>
+                    const typingOtherUserIds =
+                      conv.typingUsers?.filter(
+                        (id) => id !== currentUser?._id,
+                      ) || [];
+                    const typingNames = typingOtherUserIds
+                      .map(
+                        (id) => users?.find((u: any) => u._id === id)?.username,
+                      )
+                      .filter(Boolean);
+                    let typingText = "";
+                    if (typingNames.length === 1) {
+                      typingText = `${typingNames[0]} is typing...`;
+                    } else if (typingNames.length > 1) {
+                      typingText = `${typingNames.join(", ")} are typing...`;
+                    }
 
-                      <div className="flex-1 flex flex-col overflow-hidden">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                            {u.username}
-                          </span>
-                          {(conv?.unreadCount ?? 0) > 0 && (
-                            <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
-                              {conv?.unreadCount}
-                            </span>
+                    return (
+                      <div
+                        key={conv._id}
+                        className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-4 ${
+                          isSelected
+                            ? "bg-orange-50 dark:bg-orange-950/30 border-r-4 border-orange-500"
+                            : "hover:bg-gray-50 dark:hover:bg-zinc-800/50 border-r-4 border-transparent"
+                        }`}
+                        onClick={() => setSelectedConversation(conv._id)}
+                      >
+                        <div className="relative shrink-0">
+                          {conv.isGroup ? (
+                            <div className="h-12 w-12 rounded-full border border-gray-200 shadow-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center font-bold text-lg">
+                              {conv.groupName?.substring(0, 2).toUpperCase()}
+                            </div>
+                          ) : (
+                            <Avatar className="h-12 w-12 border border-gray-200 shadow-sm">
+                              <AvatarImage
+                                src={displayAvatar}
+                                alt={displayName}
+                              />
+                              <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
+                                {displayName?.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          {isOnline && (
+                            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
                           )}
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {conv?.typingUsers?.includes(u._id) ? (
-                            <span className="text-orange-500 font-medium italic animate-pulse">
-                              Typing...
+
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                              {displayName}
                             </span>
-                          ) : (
-                            conv?.lastMessage || "Start a new conversation"
-                          )}
-                        </span>
+                            {(conv.unreadCount ?? 0) > 0 && (
+                              <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
+                                {conv.unreadCount}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {typingText ? (
+                              <span className="text-orange-500 font-medium italic animate-pulse">
+                                {typingText}
+                              </span>
+                            ) : (
+                              conv.lastMessage ||
+                              (conv.isGroup
+                                ? membersSubtext
+                                : "Start a new conversation")
+                            )}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+
+                {/* Search Results for starting new 1v1s */}
+                {search &&
+                  filteredUsers.map((u) => {
+                    const conv = conversations?.find(
+                      (c) => !c.isGroup && c.otherUser?._id === u._id,
+                    );
+                    const isSelected =
+                      selectedConversation === (conv?._id || "temp");
+
+                    return (
+                      <div
+                        key={u._id}
+                        className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-4 ${
+                          isSelected
+                            ? "bg-orange-50 dark:bg-orange-950/30 border-r-4 border-orange-500"
+                            : "hover:bg-gray-50 dark:hover:bg-zinc-800/50 border-r-4 border-transparent"
+                        }`}
+                        onClick={async () => {
+                          if (currentUser) {
+                            const id = await startConversation({
+                              u1: currentUser._id,
+                              u2: u._id,
+                            });
+                            setSelectedConversation(id);
+                            setSearch("");
+                          }
+                        }}
+                      >
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 border border-gray-200 shadow-sm">
+                            <AvatarImage src={u.image || ""} alt={u.username} />
+                            <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
+                              {u.username.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {u.isOnline && (
+                            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate mb-1">
+                            {u.username}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            Start a new conversation
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -223,16 +417,29 @@ export default function ChatPage() {
             conversationId={selectedConversation}
             currentUser={currentUser}
             otherUser={
-              conversations?.find((c) => c._id === selectedConversation)
-                ?.otherUser
+              !conversations?.find((c) => c._id === selectedConversation)
+                ?.isGroup
+                ? conversations?.find((c) => c._id === selectedConversation)
+                    ?.otherUser
+                : undefined
             }
-            isTyping={(() => {
+            groupData={
+              conversations?.find((c) => c._id === selectedConversation)
+                ?.isGroup
+                ? conversations?.find((c) => c._id === selectedConversation)
+                : undefined
+            }
+            allUsers={users}
+            typingUsers={(() => {
               const c = conversations?.find(
                 (c) => c._id === selectedConversation,
               );
-              return c?.otherUser?._id
-                ? c.typingUsers?.includes(c.otherUser._id)
-                : false;
+              return c?.typingUsers
+                ? c.typingUsers
+                    .filter((id) => id !== currentUser?._id)
+                    .map((id) => users?.find((u) => u._id === id))
+                    .filter(Boolean)
+                : [];
             })()}
             onBack={() => setSelectedConversation(null)}
           />

@@ -13,8 +13,10 @@ export default function ChatWindow({
   conversationId,
   currentUser,
   otherUser,
-  isTyping,
+  typingUsers = [],
   onBack,
+  groupData,
+  allUsers,
 }: any) {
   const messages = useQuery(api.messages.getMessages, {
     conversationId,
@@ -49,6 +51,7 @@ export default function ChatWindow({
   const handleSend = async () => {
     if (!text.trim() || isSending) return;
 
+    if (!currentUser) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setTyping({ conversationId, typing: false, userId: currentUser._id });
 
@@ -73,44 +76,61 @@ export default function ChatWindow({
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-zinc-950 font-sans">
       {/* HEADER */}
-      {otherUser && (
-        <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm z-10 shrink-0 h-16">
-          <button
-            onClick={onBack}
-            className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <div className="relative">
-            <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
-              <AvatarImage
-                src={otherUser.image || ""}
-                alt={otherUser.username}
-              />
-              <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
-                {otherUser.username.substring(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {otherUser.isOnline && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-              {otherUser.username}
-            </span>
-            <span
-              className={`text-xs font-medium ${
-                otherUser.isOnline
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-gray-500 dark:text-gray-400"
-              }`}
-            >
-              {otherUser.isOnline ? "Online" : "Offline"}
-            </span>
-          </div>
-        </div>
-      )}
+      {/* HEADER */}
+      <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm z-10 shrink-0 h-16">
+        <button
+          onClick={onBack}
+          className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        {groupData ? (
+          <>
+            <div className="h-10 w-10 rounded-full border border-gray-200 shadow-sm bg-orange-100 dark:bg-orange-900/30 text-orange-600 flex items-center justify-center font-bold">
+              {groupData.groupName?.substring(0, 2).toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                {groupData.groupName}
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                {groupData.participantDetails?.length} members
+              </span>
+            </div>
+          </>
+        ) : otherUser ? (
+          <>
+            <div className="relative">
+              <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
+                <AvatarImage
+                  src={otherUser.image || ""}
+                  alt={otherUser.username}
+                />
+                <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
+                  {otherUser.username.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {otherUser.isOnline && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                {otherUser.username}
+              </span>
+              <span
+                className={`text-xs font-medium ${
+                  otherUser.isOnline
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {otherUser.isOnline ? "Online" : "Offline"}
+              </span>
+            </div>
+          </>
+        ) : null}
+      </div>
 
       {/* MESSAGES AREA */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
@@ -139,7 +159,9 @@ export default function ChatWindow({
           </div>
         ) : (
           messages?.map((m: any, index: number) => {
-            const isCurrentUser = m.sender === currentUser._id;
+            const isCurrentUser = currentUser && m.sender === currentUser._id;
+            const senderUser =
+              allUsers?.find((u: any) => u._id === m.sender) || otherUser;
             const showAvatar =
               !isCurrentUser &&
               (index === 0 || messages[index - 1].sender !== m.sender);
@@ -156,12 +178,21 @@ export default function ChatWindow({
                   {!isCurrentUser && (
                     <div className="w-8 shrink-0">
                       {showAvatar ? (
-                        <Avatar className="h-8 w-8 mb-1 border border-gray-200 shadow-sm">
-                          <AvatarImage src={otherUser?.image || ""} />
-                          <AvatarFallback className="text-[10px] bg-gray-200 text-gray-600">
-                            {otherUser?.username?.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
+                        <div className="flex flex-col items-center">
+                          <Avatar className="h-8 w-8 mb-1 border border-gray-200 shadow-sm">
+                            <AvatarImage src={senderUser?.image || ""} />
+                            <AvatarFallback className="text-[10px] bg-gray-200 text-gray-600">
+                              {senderUser?.username
+                                ?.substring(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {groupData && showAvatar && (
+                            <span className="text-[10px] text-gray-400 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[60px]">
+                              {senderUser?.username}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <div className="w-8 h-8" />
                       )}
@@ -191,13 +222,14 @@ export default function ChatWindow({
                         {!m.isDeleted && (
                           <div className="relative">
                             <button
-                              onClick={() =>
+                              onClick={() => {
+                                if (!currentUser) return;
                                 setActiveReactionMessage(
                                   activeReactionMessage === m._id
                                     ? null
                                     : m._id,
-                                )
-                              }
+                                );
+                              }}
                               className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 shrink-0"
                               title="Add reaction"
                             >
@@ -211,6 +243,7 @@ export default function ChatWindow({
                                   <button
                                     key={emoji}
                                     onClick={() => {
+                                      if (!currentUser) return;
                                       toggleReaction({
                                         messageId: m._id,
                                         userId: currentUser._id,
@@ -229,12 +262,13 @@ export default function ChatWindow({
                         )}
                         {isCurrentUser && !m.isDeleted && (
                           <button
-                            onClick={() =>
+                            onClick={() => {
+                              if (!currentUser) return;
                               deleteMessage({
                                 messageId: m._id,
                                 userId: currentUser._id,
-                              })
-                            }
+                              });
+                            }}
                             className="p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
                             title="Delete message"
                           >
@@ -252,15 +286,16 @@ export default function ChatWindow({
                         {m.reactions.map((r: any) => (
                           <button
                             key={r.emoji}
-                            onClick={() =>
+                            onClick={() => {
+                              if (!currentUser) return;
                               toggleReaction({
                                 messageId: m._id,
                                 userId: currentUser._id,
                                 emoji: r.emoji,
-                              })
-                            }
+                              });
+                            }}
                             className={`text-[10px] px-1.5 py-0.5 rounded-full border flex items-center gap-1 transition-colors ${
-                              r.users.includes(currentUser._id)
+                              currentUser && r.users.includes(currentUser._id)
                                 ? "bg-orange-100 border-orange-300 dark:bg-orange-900/30 dark:border-orange-800"
                                 : "bg-gray-50 border-gray-200 dark:bg-zinc-800 dark:border-zinc-700"
                             }`}
@@ -268,7 +303,7 @@ export default function ChatWindow({
                             <span>{r.emoji}</span>
                             <span
                               className={
-                                r.users.includes(currentUser._id)
+                                currentUser && r.users.includes(currentUser._id)
                                   ? "text-orange-700 dark:text-orange-400 font-medium"
                                   : "text-gray-500 dark:text-gray-400"
                               }
@@ -292,33 +327,38 @@ export default function ChatWindow({
           })
         )}
 
-        {isTyping && (
-          <div className="flex w-full justify-start group">
+        {typingUsers.map((u: any) => (
+          <div key={u._id} className="flex w-full justify-start group mt-2">
             <div className="flex max-w-[70%] items-end gap-2 flex-row">
               <div className="w-8 shrink-0">
                 <Avatar className="h-8 w-8 mb-1 border border-gray-200 shadow-sm">
-                  <AvatarImage src={otherUser?.image || ""} />
+                  <AvatarImage src={u.image || ""} />
                   <AvatarFallback className="text-[10px] bg-gray-200 text-gray-600">
-                    {otherUser?.username?.substring(0, 2).toUpperCase()}
+                    {u.username?.substring(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
               </div>
               <div className="flex flex-col items-start">
-                <div className="px-4 py-3 bg-white dark:bg-zinc-800 rounded-2xl rounded-tl-[4px] border border-gray-100 dark:border-zinc-700 shadow-sm flex items-center gap-1">
-                  <div
-                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "-0.3s" }}
-                  ></div>
-                  <div
-                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "-0.15s" }}
-                  ></div>
-                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="px-4 py-3 bg-white dark:bg-zinc-800 rounded-2xl rounded-tl-[4px] border border-gray-100 dark:border-zinc-700 shadow-sm flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium italic">
+                    {u.username} is typing
+                  </span>
+                  <div className="flex gap-1">
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "-0.3s" }}
+                    ></div>
+                    <div
+                      className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: "-0.15s" }}
+                    ></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        ))}
 
         <div ref={bottomRef} className="h-1" />
       </div>

@@ -10,13 +10,14 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function Home() {
   const { userId } = await auth();
   if (userId) {
     redirect("/chat");
   }
-  
+
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 overflow-hidden">
       {/* Background Pattern */}
@@ -34,7 +35,7 @@ export default async function Home() {
               ChitChat
             </CardTitle>
             <CardDescription className="text-base font-medium text-zinc-500 dark:text-zinc-400">
-              A modern way to connect and chat
+              Made as an assignment for Tars
             </CardDescription>
           </div>
         </CardHeader>
@@ -47,7 +48,13 @@ export default async function Home() {
               </Button>
             </SignInButton>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
-              Join our community and start chatting today.
+              Join our community{" "}
+              <Link
+                href={"https://hellotars.com/"}
+                className="text-orange-600 dark:text-orange-400 hover:underline"
+              >
+                hellotars.com
+              </Link>
             </p>
           </div>
         </CardContent>
