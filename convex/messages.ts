@@ -73,3 +73,38 @@ export const deleteMessage = mutation({
     await ctx.db.patch(args.messageId, { isDeleted: true });
   },
 });
+
+export const toggleReaction = mutation({
+  args: {
+    messageId: v.id("messages"),
+    userId: v.id("users"),
+    emoji: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (!msg) throw new Error("Message not found");
+
+    const reactions = msg.reactions || [];
+    const existingReactionIndex = reactions.findIndex(
+      (r) => r.emoji === args.emoji,
+    );
+
+    if (existingReactionIndex !== -1) {
+      const existingReaction = reactions[existingReactionIndex];
+      const userIndex = existingReaction.users.indexOf(args.userId);
+
+      if (userIndex !== -1) {
+        existingReaction.users.splice(userIndex, 1);
+        if (existingReaction.users.length === 0) {
+          reactions.splice(existingReactionIndex, 1);
+        }
+      } else {
+        existingReaction.users.push(args.userId);
+      }
+    } else {
+      reactions.push({ emoji: args.emoji, users: [args.userId] });
+    }
+
+    await ctx.db.patch(args.messageId, { reactions });
+  },
+});

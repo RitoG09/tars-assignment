@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/ChatWindow";
 import { Search, LogOut, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function LogoutButton() {
   const { signOut } = useClerk();
@@ -130,67 +131,83 @@ export default function ChatPage() {
               <p className="mt-1">Search for a user to start chatting!</p>
             </div>
           )}
+
           <div className="py-2">
-            {filtered?.map((u) => {
-              const conv = conversations?.find(
-                (c) => c.otherUser?._id === u._id,
-              );
-              const isSelected = selectedConversation === (conv?._id || "temp");
-
-              return (
-                <div
-                  key={u._id}
-                  className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-4 ${
-                    isSelected
-                      ? "bg-orange-50 dark:bg-orange-950/30 border-r-4 border-orange-500"
-                      : "hover:bg-gray-50 dark:hover:bg-zinc-800/50 border-r-4 border-transparent"
-                  }`}
-                  onClick={async () => {
-                    if (currentUser) {
-                      const id = await startConversation({
-                        u1: currentUser._id,
-                        u2: u._id,
-                      });
-                      setSelectedConversation(id);
-                    }
-                  }}
-                >
-                  <div className="relative">
-                    <Avatar className="h-12 w-12 border border-gray-200 shadow-sm">
-                      <AvatarImage src={u.image || ""} alt={u.username} />
-                      <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
-                        {u.username.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {u.isOnline && (
-                      <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
-                    )}
-                  </div>
-
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {u.username}
-                      </span>
-                      {(conv?.unreadCount ?? 0) > 0 && (
-                        <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
-                          {conv?.unreadCount}
-                        </span>
-                      )}
+            {users === undefined || conversations === undefined
+              ? // Loading State Skeletons
+                Array.from({
+                  length: conversations ? conversations.length : 5,
+                }).map((_, i) => (
+                  <div key={i} className="px-4 py-3 flex items-center gap-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-3/4" />
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {conv?.typingUsers?.includes(u._id) ? (
-                        <span className="text-orange-500 font-medium italic animate-pulse">
-                          Typing...
-                        </span>
-                      ) : (
-                        conv?.lastMessage || "Start a new conversation"
-                      )}
-                    </span>
                   </div>
-                </div>
-              );
-            })}
+                ))
+              : // Actual User List
+                filtered?.map((u) => {
+                  const conv = conversations?.find(
+                    (c) => c.otherUser?._id === u._id,
+                  );
+                  const isSelected =
+                    selectedConversation === (conv?._id || "temp");
+
+                  return (
+                    <div
+                      key={u._id}
+                      className={`px-4 py-3 cursor-pointer transition-colors flex items-center gap-4 ${
+                        isSelected
+                          ? "bg-orange-50 dark:bg-orange-950/30 border-r-4 border-orange-500"
+                          : "hover:bg-gray-50 dark:hover:bg-zinc-800/50 border-r-4 border-transparent"
+                      }`}
+                      onClick={async () => {
+                        if (currentUser) {
+                          const id = await startConversation({
+                            u1: currentUser._id,
+                            u2: u._id,
+                          });
+                          setSelectedConversation(id);
+                        }
+                      }}
+                    >
+                      <div className="relative">
+                        <Avatar className="h-12 w-12 border border-gray-200 shadow-sm">
+                          <AvatarImage src={u.image || ""} alt={u.username} />
+                          <AvatarFallback className="bg-orange-100 text-orange-600 font-medium">
+                            {u.username.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {u.isOnline && (
+                          <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-zinc-900 rounded-full"></span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                            {u.username}
+                          </span>
+                          {(conv?.unreadCount ?? 0) > 0 && (
+                            <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
+                              {conv?.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {conv?.typingUsers?.includes(u._id) ? (
+                            <span className="text-orange-500 font-medium italic animate-pulse">
+                              Typing...
+                            </span>
+                          ) : (
+                            conv?.lastMessage || "Start a new conversation"
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
           </div>
         </div>
       </div>
