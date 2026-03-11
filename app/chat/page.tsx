@@ -117,6 +117,11 @@ export default function ChatPage() {
     setSelectedConversation(id);
   };
 
+  const unstartedUsers = filteredUsers.filter(
+    (u) =>
+      !conversations?.some((c) => !c.isGroup && c.otherUser?._id === u._id),
+  );
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-zinc-950 font-sans">
       {/* LEFT SIDEBAR */}
@@ -164,15 +169,17 @@ export default function ChatPage() {
               <p>No users found for "{search}"</p>
             </div>
           )}
-          {conversations?.length === 0 && !search && (
-            <div className="p-8 text-center text-sm text-gray-500 flex flex-col items-center">
-              <MessageSquare className="h-8 w-8 text-gray-300 mb-3" />
-              <p className="font-medium text-gray-700 dark:text-gray-300">
-                No conversations yet.
-              </p>
-              <p className="mt-1">Search for a user to start chatting!</p>
-            </div>
-          )}
+          {conversations?.length === 0 &&
+            unstartedUsers.length === 0 &&
+            !search && (
+              <div className="p-8 text-center text-sm text-gray-500 flex flex-col items-center">
+                <MessageSquare className="h-8 w-8 text-gray-300 mb-3" />
+                <p className="font-medium text-gray-700 dark:text-gray-300">
+                  No conversations yet.
+                </p>
+                <p className="mt-1">Invite friends to start chatting!</p>
+              </div>
+            )}
 
           <div className="py-2">
             {users === undefined || conversations === undefined ? (
@@ -191,45 +198,42 @@ export default function ChatPage() {
             ) : (
               // Actual List (Conversations or Search Results)
               <>
-                {!search &&
-                  filteredConversations.map((conv) => (
-                    <ConversationItem
-                      key={conv._id}
-                      conv={conv as any}
-                      isSelected={selectedConversation === conv._id}
-                      currentUser={currentUser}
-                      users={users}
-                      onClick={setSelectedConversation}
-                    />
-                  ))}
+                {filteredConversations.map((conv) => (
+                  <ConversationItem
+                    key={conv._id}
+                    conv={conv as any}
+                    isSelected={selectedConversation === conv._id}
+                    currentUser={currentUser}
+                    users={users}
+                    onClick={setSelectedConversation}
+                  />
+                ))}
 
-                {/* Search Results for starting new 1v1s */}
-                {search &&
-                  filteredUsers.map((u) => {
-                    const conv = conversations?.find(
-                      (c) => !c.isGroup && c.otherUser?._id === u._id,
-                    );
-                    const isSelected =
-                      selectedConversation === (conv?._id || "temp");
-
-                    return (
-                      <UserItem
-                        key={u._id}
-                        user={u}
-                        isSelected={isSelected}
-                        onClick={async () => {
-                          if (currentUser) {
-                            const id = await startConversation({
-                              u1: currentUser._id,
-                              u2: u._id,
-                            });
-                            setSelectedConversation(id);
-                            setSearch("");
-                          }
-                        }}
-                      />
-                    );
-                  })}
+                {/* Other Users list */}
+                {unstartedUsers.length > 0 && (
+                  <div className="px-4 py-2 mt-2">
+                    <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Other Users
+                    </span>
+                  </div>
+                )}
+                {unstartedUsers.map((u) => (
+                  <UserItem
+                    key={u._id}
+                    user={u}
+                    isSelected={false}
+                    onClick={async () => {
+                      if (currentUser) {
+                        const id = await startConversation({
+                          u1: currentUser._id,
+                          u2: u._id,
+                        });
+                        setSelectedConversation(id);
+                        setSearch("");
+                      }
+                    }}
+                  />
+                ))}
               </>
             )}
           </div>
