@@ -45,3 +45,17 @@ export const getUsers = query({
     return users.filter((u) => u._id !== currentUser._id);
   },
 });
+
+export const updateOnlineStatus = mutation({
+  args: { clerkId: v.string(), isOnline: v.boolean() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (user) {
+      await ctx.db.patch(user._id, { isOnline: args.isOnline });
+    }
+  },
+});

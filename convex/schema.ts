@@ -7,6 +7,7 @@ export default defineSchema({
     username: v.string(),
     image: v.optional(v.string()),
     email: v.optional(v.string()),
+    isOnline: v.optional(v.boolean()),
   }).index("by_clerk_id", ["clerkId"]),
 
   conversations: defineTable({
