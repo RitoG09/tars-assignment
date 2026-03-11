@@ -1,65 +1,89 @@
-import Image from "next/image";
+import { SignInButton, Show, UserButton, SignOutButton } from "@clerk/nextjs";
+import { MessageSquare } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="relative flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-4 overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+
+      {/* Main Content */}
+      <Card className="w-full max-w-md shadow-2xl relative z-10 border-zinc-200/50 dark:border-zinc-800/50 backdrop-blur-sm bg-white/95 dark:bg-zinc-900/95 overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-red-500"></div>
+        <CardHeader className="text-center space-y-4 pt-10 pb-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 shadow-md">
+            <MessageSquare className="h-8 w-8 text-white" />
+          </div>
+          <div className="space-y-1">
+            <CardTitle className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
+              ChitChat
+            </CardTitle>
+            <CardDescription className="text-base font-medium text-zinc-500 dark:text-zinc-400">
+              A modern way to connect and chat
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex flex-col items-center justify-center space-y-6 pb-10 px-8">
+          <Show when="signed-out">
+            <div className="w-full space-y-6">
+              <SignInButton mode="modal">
+                <Button className="w-full h-12 text-base font-semibold shadow-sm rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white border-0">
+                  Get Started
+                </Button>
+              </SignInButton>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center">
+                Join our community and start chatting today.
+              </p>
+            </div>
+          </Show>
+
+          <Show when="signed-in">
+            <div className="w-full space-y-8 flex flex-col items-center">
+              <div className="rounded-xl border border-orange-200/50 dark:border-orange-900/50 bg-orange-50/50 dark:bg-orange-900/10 p-5 w-full text-center shadow-sm">
+                <h2 className="text-lg font-semibold tracking-tight text-orange-800 dark:text-orange-300">
+                  Welcome back!
+                </h2>
+                <p className="text-sm text-orange-600/80 dark:text-orange-400/80 mt-1 font-medium">
+                  You are successfully logged in
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center gap-6 w-full">
+                <div className="relative">
+                  <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 opacity-70 blur-sm"></div>
+                  <div className="relative rounded-full ring-2 ring-background bg-background">
+                    <UserButton
+                      appearance={{
+                        elements: {
+                          userButtonAvatarBox: "w-14 h-14 shadow-sm",
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <SignOutButton>
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 rounded-xl font-medium border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shadow-sm"
+                  >
+                    Sign Out
+                  </Button>
+                </SignOutButton>
+              </div>
+            </div>
+          </Show>
+        </CardContent>
+      </Card>
+    </main>
   );
 }
