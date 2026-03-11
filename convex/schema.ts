@@ -14,6 +14,7 @@ export default defineSchema({
     participants: v.array(v.id("users")),
     lastMessage: v.optional(v.string()),
     lastMessageTime: v.optional(v.number()),
+    typingUsers: v.optional(v.array(v.id("users"))),
   }).index("by_user", ["participants"]),
 
   messages: defineTable({
@@ -21,5 +22,7 @@ export default defineSchema({
     sender: v.id("users"),
     text: v.string(),
     createdAt: v.number(),
+    isRead: v.optional(v.boolean()),
+    isDeleted: v.optional(v.boolean()),
   }).index("by_conversation", ["conversationId"]),
 });

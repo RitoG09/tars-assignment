@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useEffect, useRef, useState } from "react";
 import { formatTimestamp } from "@/lib/formatTimestamp";
-import { SendIcon } from "lucide-react";
+import { SendIcon, ChevronLeft, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -12,16 +12,27 @@ export default function ChatWindow({
   conversationId,
   currentUser,
   otherUser,
+  isTyping,
+  onBack,
 }: any) {
   const messages = useQuery(api.messages.getMessages, {
     conversationId,
   });
 
   const sendMessage = useMutation(api.messages.sendMessage);
+  const markRead = useMutation(api.messages.markRead);
+  const setTyping = useMutation(api.conversations.setTyping);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
 
   const [text, setText] = useState("");
-
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (conversationId && currentUser) {
+      markRead({ conversationId, userId: currentUser._id });
+    }
+  }, [messages, conversationId, currentUser, markRead]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,6 +40,9 @@ export default function ChatWindow({
 
   const handleSend = async () => {
     if (!text.trim()) return;
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    setTyping({ conversationId, typing: false, userId: currentUser._id });
 
     await sendMessage({
       conversationId,
@@ -43,7 +57,13 @@ export default function ChatWindow({
     <div className="flex flex-col h-full bg-slate-50 dark:bg-zinc-950 font-sans">
       {/* HEADER */}
       {otherUser && (
-        <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm z-10 h-16">
+        <div className="flex items-center gap-3 p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm z-10 shrink-0 h-16">
+          <button
+            onClick={onBack}
+            className="md:hidden p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
           <div className="relative">
             <Avatar className="h-10 w-10 border border-gray-200 shadow-sm">
               <AvatarImage
@@ -113,17 +133,38 @@ export default function ChatWindow({
                   className={`flex flex-col ${isCurrentUser ? "items-end" : "items-start"}`}
                 >
                   <div
-                    className={`px-4 py-2 text-sm shadow-sm ${
-                      isCurrentUser
-                        ? "bg-orange-500 text-white rounded-2xl rounded-tr-[4px]"
-                        : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-tl-[4px] border border-gray-100 dark:border-zinc-700"
-                    }`}
+                    className={`flex items-center gap-2 ${isCurrentUser ? "flex-row-reverse" : "flex-row"}`}
                   >
-                    {m.text}
+                    <div
+                      className={`px-4 py-2 text-sm shadow-sm ${
+                        m.isDeleted
+                          ? "bg-gray-100 dark:bg-zinc-800/60 text-gray-500 italic rounded-2xl border border-gray-200 dark:border-zinc-700"
+                          : isCurrentUser
+                            ? "bg-orange-500 text-white rounded-2xl rounded-tr-[4px]"
+                            : "bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-100 rounded-2xl rounded-tl-[4px] border border-gray-100 dark:border-zinc-700"
+                      }`}
+                    >
+                      {m.isDeleted ? "This message was deleted" : m.text}
+                    </div>
+
+                    {isCurrentUser && !m.isDeleted && (
+                      <button
+                        onClick={() =>
+                          deleteMessage({
+                            messageId: m._id,
+                            userId: currentUser._id,
+                          })
+                        }
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0"
+                        title="Delete message"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
 
                   <span
-                    className={`text-[10px] text-gray-400 font-medium mt-1 opacity-0 group-hover:opacity-100 transition-opacity ${isCurrentUser ? "mr-1" : "ml-1"}`}
+                    className={`text-[10px] text-gray-400 font-medium mt-1 ${isCurrentUser ? "mr-1" : "ml-1"}`}
                   >
                     {formatTimestamp(m.createdAt)}
                   </span>
@@ -132,6 +173,35 @@ export default function ChatWindow({
             </div>
           );
         })}
+
+        {isTyping && (
+          <div className="flex w-full justify-start group">
+            <div className="flex max-w-[70%] items-end gap-2 flex-row">
+              <div className="w-8 shrink-0">
+                <Avatar className="h-8 w-8 mb-1 border border-gray-200 shadow-sm">
+                  <AvatarImage src={otherUser?.image || ""} />
+                  <AvatarFallback className="text-[10px] bg-gray-200 text-gray-600">
+                    {otherUser?.username?.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <div className="flex flex-col items-start">
+                <div className="px-4 py-3 bg-white dark:bg-zinc-800 rounded-2xl rounded-tl-[4px] border border-gray-100 dark:border-zinc-700 shadow-sm flex items-center gap-1">
+                  <div
+                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "-0.3s" }}
+                  ></div>
+                  <div
+                    className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "-0.15s" }}
+                  ></div>
+                  <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} className="h-1" />
       </div>
 
@@ -147,7 +217,23 @@ export default function ChatWindow({
           <input
             className="flex-1 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-gray-100 border-none rounded-full px-5 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 transition-all font-medium"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value);
+              setTyping({
+                conversationId,
+                typing: true,
+                userId: currentUser._id,
+              });
+              if (typingTimeoutRef.current)
+                clearTimeout(typingTimeoutRef.current);
+              typingTimeoutRef.current = setTimeout(() => {
+                setTyping({
+                  conversationId,
+                  typing: false,
+                  userId: currentUser._id,
+                });
+              }, 2000);
+            }}
             placeholder="Type a message..."
           />
           <button

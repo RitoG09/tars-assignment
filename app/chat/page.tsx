@@ -84,7 +84,11 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-zinc-950 font-sans">
       {/* LEFT SIDEBAR */}
-      <div className="w-80 border-r border-gray-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-900 shadow-sm z-10">
+      <div
+        className={`${
+          selectedConversation ? "hidden md:flex" : "flex"
+        } w-full md:w-80 border-r border-gray-200 dark:border-zinc-800 flex-col bg-white dark:bg-zinc-900 shadow-sm z-10 shrink-0`}
+      >
         {/* Top Bar */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-zinc-800 h-16">
           <div className="flex items-center gap-3">
@@ -168,9 +172,20 @@ export default function ChatPage() {
                       <span className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
                         {u.username}
                       </span>
+                      {(conv?.unreadCount ?? 0) > 0 && (
+                        <span className="bg-orange-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold">
+                          {conv?.unreadCount}
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {conv?.lastMessage || "Start a new conversation"}
+                      {conv?.typingUsers?.includes(u._id) ? (
+                        <span className="text-orange-500 font-medium italic animate-pulse">
+                          Typing...
+                        </span>
+                      ) : (
+                        conv?.lastMessage || "Start a new conversation"
+                      )}
                     </span>
                   </div>
                 </div>
@@ -181,7 +196,11 @@ export default function ChatPage() {
       </div>
 
       {/* CHAT WINDOW */}
-      <div className="flex-1 bg-white dark:bg-zinc-950 flex flex-col">
+      <div
+        className={`${
+          selectedConversation ? "flex" : "hidden md:flex"
+        } flex-1 bg-white dark:bg-zinc-950 flex-col`}
+      >
         {selectedConversation ? (
           <ChatWindow
             conversationId={selectedConversation}
@@ -190,6 +209,15 @@ export default function ChatPage() {
               conversations?.find((c) => c._id === selectedConversation)
                 ?.otherUser
             }
+            isTyping={(() => {
+              const c = conversations?.find(
+                (c) => c._id === selectedConversation,
+              );
+              return c?.otherUser?._id
+                ? c.typingUsers?.includes(c.otherUser._id)
+                : false;
+            })()}
+            onBack={() => setSelectedConversation(null)}
           />
         ) : (
           <div className="flex flex-col h-full items-center justify-center text-gray-400 dark:text-zinc-600 bg-gray-50/50 dark:bg-zinc-900/20">
