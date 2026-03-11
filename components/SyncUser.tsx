@@ -11,7 +11,6 @@ export default function SyncUser() {
 
   useEffect(() => {
     if (!user) return;
-
     createUser({
       clerkId: user.id,
       username: user.username || user.firstName || "User",
